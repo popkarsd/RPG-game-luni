@@ -25,11 +25,12 @@ class Luni():
         self.y_velocity = 0
         self.is_jumping = False
 
-        # Prediction vars
-        self.next_left = self.rect.left
-        self.next_bottom = self.rect.bottom
-        self.next_right = self.rect.right
-        self.next_top = self.rect.top
+        #collision vars
+        self.floor_y = ai_settings.floor_y
+        self.collided = False
+        # prev rect
+        self.prev_rect = self.image.get_rect()
+
         
 
     def blitme(self):
@@ -39,59 +40,86 @@ class Luni():
     def horizontal_movement(self):
         if (self.go_left and (not self.go_right)):
             self.x_velocity = -ai_settings.move_increment
-            if (self.next_left < self.screen_rect.left):
+            if (self.rect.left < self.screen_rect.left):
                 self.x_velocity = 0
         elif (self.go_right and (not self.go_left)):
             self.x_velocity = ai_settings.move_increment
-            if (self.next_right > self.screen_rect.right):
+            if (self.rect.right > self.screen_rect.right):
                 self.x_velocity = 0
         else:
             self.x_velocity = 0
         
 
-    def calculate_next(self):
-        self.next_bottom = self.rect.bottom - self.y_velocity
-        self.next_left = self.rect.left + self.x_velocity
-        self.next_right = self.rect.right + self.x_velocity
-        self.next_top = self.rect.top - self.y_velocity
+    def save_pos(self):
+        self.prev_rect = self.rect.copy()
     
     def jump(self):
         if (not self.is_jumping):
             return
-        if self.rect.bottom == ai_settings.floor_y:
+        if self.rect.bottom == self.floor_y:
+            self.rect.centery -= 1
             self.y_velocity = ai_settings.jump_vel
-            
+
 
             
     def implement_velocities(self):
         self.x_velocity += self.x_acceleration
         self.y_velocity += self.y_acceleration
-        if (self.rect.bottom - self.y_velocity >= ai_settings.floor_y):
-            self.y_velocity = 0
-            self.rect.bottom = ai_settings.floor_y
 
         self.rect.centerx += self.x_velocity
         self.rect.centery -= self.y_velocity
 
+        # Check if luni hits "floor" next frame and if so zero the velocity and put it back up
+        if (self.rect.bottom >= self.floor_y):
+            self.y_velocity = 0
+            self.rect.bottom = self.floor_y
+
+
     def update(self):
-        # Calculate next pos to check for stuff
-        self.calculate_next()
         # Jump!
         self.jump()
-        # Horizontal movement
+        # Horizontal movement velocity stuff
         self.horizontal_movement()
+        # Saves current positions 
+        self.save_pos()
         # Implement velocities and accelerations
         self.implement_velocities()
+    
+    def debug_collision(self, collided_rect):
+
+        #checks if luni coming to the box from above
+        if (collided_rect.top >= self.prev_rect.bottom):
+            self.rect.top = self.prev_rect.top
+            self.floor_y = collided_rect.top
+        #checks if luni coming from below
+        elif (collided_rect.bottom <= self.prev_rect.top):
+            self.rect.top = self.prev_rect.top
+            self.y_velocity = 0
+        #luni coming from left or right
+        else:
+            self.rect.left = self.prev_rect.left
+            
 
 
-class Block():
+
+
+
+class Block(pygame.sprite.Sprite):
     def __init__(self, screen, left, top):
+        super().__init__()
         # Initialize block properties
         self.screen = screen
 
         # Initialize image and rect properties
-        self.image = pygame.image.load('block.bmp')
+        self.image = pygame.image.load('/Users/brendonjiang/Desktop/_home/python_programming/RPG/block.png')
         self.rect = self.image.get_rect()
         self.screen_rect = screen.get_rect()
         self.rect.top = top
         self.rect.left = left
+    
+    def blitme(self):
+        # Draws itself to screen
+        self.screen.blit(self.image,self.rect)
+
+    def update(self):
+        self.a = 1
